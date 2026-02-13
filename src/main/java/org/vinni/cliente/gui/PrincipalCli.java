@@ -16,6 +16,7 @@ public class PrincipalCli extends javax.swing.JFrame {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
+    private String clientName; /* Nombre del cliente */
 
     /**
      * Creates new form Principal1
@@ -130,6 +131,9 @@ public class PrincipalCli extends javax.swing.JFrame {
             if (socket == null || socket.isClosed()) {
                 socket = new Socket("localhost", PORT); // Asume que el servidor está en localhost y escucha en el puerto 5555
                 out = new PrintWriter(socket.getOutputStream(), true);
+                clientName = solicitarNombre();
+                out.println("NOMBRE:" + clientName);
+                this.setTitle("Cliente " + clientName);
             }
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             new Thread(new Runnable() {
@@ -150,10 +154,22 @@ public class PrincipalCli extends javax.swing.JFrame {
         }
     }
     private void enviarMensaje() {
-        out.println(mensajeTxt.getText());
+        String texto = mensajeTxt.getText();
+        if (texto == null || texto.trim().isEmpty()) {
+            return;
+        }
+        out.println(texto);
         mensajeTxt.setText("");
 
 
 
+    }
+
+    private String solicitarNombre() {
+        String nombre = JOptionPane.showInputDialog(this, "Ingrese nombre del cliente:");
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return "cliente";
+        }
+        return nombre.trim();
     }
 }

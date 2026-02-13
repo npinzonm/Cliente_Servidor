@@ -9,6 +9,9 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Author: Vinni
@@ -16,9 +19,8 @@ import java.net.Socket;
 public class PrincipalSrv extends javax.swing.JFrame {
     private final int PORT = 12345;
     private ServerSocket serverSocket;
-    private Socket clientSocket;
-    private BufferedReader in;
-    private PrintWriter out;
+    private final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
+    private final AtomicInteger clientCounter = new AtomicInteger(1);
 
     /**
      * Creates new form Principal1
@@ -89,18 +91,12 @@ public class PrincipalSrv extends javax.swing.JFrame {
             public void run() {
                 try {
                     InetAddress addr = InetAddress.getLocalHost();
-                    serverSocket = new ServerSocket( PORT);
+                    serverSocket = new ServerSocket(PORT);
                     mensajesTxt.append("Servidor TCP en ejecución: "+ addr + " ,Puerto " + serverSocket.getLocalPort()+ "\n");
                     while (true) {
-                        clientSocket = serverSocket.accept();
-                        in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        String linea;
-                        out = new PrintWriter(clientSocket.getOutputStream(), true);
-                        while ((linea = in.readLine()) != null) {
-                            mensajesTxt.append("Cliente: " + linea + "\n");
-                            out.println("Mensaje recibido en el server " );
-                        }
-
+                        Socket clientSocket = serverSocket.accept();
+                        ClientHandler handler = new ClientHandler(clientSocket);
+                        handler.start();
                     }
                 } catch (IOException ex) {
                     ex.printStackTrace();
@@ -108,6 +104,113 @@ public class PrincipalSrv extends javax.swing.JFrame {
                 }
             }
         }).start();
+    }
+
+    private void appendServerMessage(String message) {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                mensajesTxt.append(message + "\n");
+            }
+        });
+    }
+
+    private void broadcast(String fromClient, String message) {
+        String formatted = "[" + fromClient + "]: " + message;
+        for (ClientHandler handler : clients.values()) {
+            handler.send(formatted);
+        }
+        appendServerMessage(formatted);
+    }
+
+    private void sendToClient(String fromClient, String toClient, String message) {
+        ClientHandler target = clients.get(toClient);
+        if (target == null) {
+            ClientHandler sender = clients.get(fromClient);
+            if (sender != null) {
+                sender.send("Servidor: Cliente no encontrado: " + toClient);
+            }
+            appendServerMessage("Intento fallido de " + fromClient + " hacia " + toClient + ": " + message);
+            return;
+        }
+        String formatted = "[DM de " + fromClient + "]: " + message;
+        target.send(formatted);
+        appendServerMessage(formatted);
+    }
+
+    private String registerClientName(String requestedName) {
+        String baseName = requestedName == null ? "" : requestedName.trim();
+        if (baseName.isEmpty()) {
+            baseName = "cliente-" + clientCounter.getAndIncrement();
+        }
+        String candidate = baseName;
+        int suffix = 1;
+        while (clients.containsKey(candidate)) {
+            candidate = baseName + "-" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private class ClientHandler extends Thread {
+        private final Socket socket;
+        private BufferedReader in;
+        private PrintWriter out;
+        private String clientName;
+
+        ClientHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out = new PrintWriter(socket.getOutputStream(), true);
+
+                String firstLine = in.readLine();
+                if (firstLine != null && firstLine.startsWith("NOMBRE:")) {
+                    clientName = registerClientName(firstLine.substring("NOMBRE:".length()));
+                } else {
+                    clientName = registerClientName("");
+                }
+                clients.put(clientName, this);
+                send("Servidor: Conectado como " + clientName);
+                appendServerMessage("Cliente conectado: " + clientName);
+
+                String linea;
+                while ((linea = in.readLine()) != null) {
+                    if (linea.startsWith("/msg ")) {
+                        String payload = linea.substring(5).trim();
+                        int spaceIdx = payload.indexOf(' ');
+                        if (spaceIdx <= 0) {
+                            send("Servidor: Uso correcto: /msg <cliente> <mensaje>");
+                            continue;
+                        }
+                        String target = payload.substring(0, spaceIdx).trim();
+                        String body = payload.substring(spaceIdx + 1).trim();
+                        sendToClient(clientName, target, body);
+                    } else {
+                        broadcast(clientName, linea);
+                    }
+                }
+            } catch (IOException ex) {
+                appendServerMessage("Error con cliente: " + ex.getMessage());
+            } finally {
+                if (clientName != null) {
+                    clients.remove(clientName);
+                    appendServerMessage("Cliente desconectado: " + clientName);
+                }
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+
+        void send(String message) {
+            if (out != null) {
+                out.println(message);
+            }
+        }
     }
 
     // Variables declaration - do not modify
