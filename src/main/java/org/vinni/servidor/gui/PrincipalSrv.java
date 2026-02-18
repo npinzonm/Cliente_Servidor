@@ -1,161 +1,95 @@
 package org.vinni.servidor.gui;
 
-
 import javax.swing.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Author: Vinni
- */
-public class PrincipalSrv extends javax.swing.JFrame {
+public class PrincipalSrv extends JFrame {
+
     private final int PORT = 12345;
     private ServerSocket serverSocket;
     private final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
-    private final AtomicInteger clientCounter = new AtomicInteger(1);
+    private final AtomicInteger counter = new AtomicInteger(1);
 
-    /**
-     * Creates new form Principal1
-     */
+    private JButton bIniciar;
+    private JTextArea mensajesTxt;
+
     public PrincipalSrv() {
         initComponents();
     }
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">
+
     private void initComponents() {
-        this.setTitle("Servidor ...");
+        setTitle("Servidor TCP");
+        setSize(500, 300);
+        setLayout(null);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        bIniciar = new javax.swing.JButton();
-        jLabel1 = new javax.swing.JLabel();
+        bIniciar = new JButton("INICIAR SERVIDOR");
+        bIniciar.setBounds(120, 40, 250, 40);
+        add(bIniciar);
+
         mensajesTxt = new JTextArea();
-        jScrollPane1 = new javax.swing.JScrollPane();
+        mensajesTxt.setEditable(false);
+        JScrollPane scroll = new JScrollPane(mensajesTxt);
+        scroll.setBounds(20, 100, 450, 140);
+        add(scroll);
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        getContentPane().setLayout(null);
-
-        bIniciar.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        bIniciar.setText("INICIAR SERVIDOR");
-        bIniciar.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                bIniciarActionPerformed(evt);
-            }
-        });
-        getContentPane().add(bIniciar);
-        bIniciar.setBounds(100, 90, 250, 40);
-
-        jLabel1.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
-        jLabel1.setForeground(new java.awt.Color(204, 0, 0));
-        jLabel1.setText("SERVIDOR TCP : HOEL");
-        getContentPane().add(jLabel1);
-        jLabel1.setBounds(150, 10, 160, 17);
-
-        mensajesTxt.setColumns(25);
-        mensajesTxt.setRows(5);
-
-        jScrollPane1.setViewportView(mensajesTxt);
-
-        getContentPane().add(jScrollPane1);
-        jScrollPane1.setBounds(20, 160, 410, 70);
-
-        setSize(new java.awt.Dimension(491, 290));
+        bIniciar.addActionListener(e -> iniciarServidor());
         setLocationRelativeTo(null);
-    }// </editor-fold>
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new PrincipalSrv().setVisible(true);
-            }
-        });
-
-    }
-    private void bIniciarActionPerformed(java.awt.event.ActionEvent evt) {
-        iniciarServidor();
     }
 
     private void iniciarServidor() {
-        JOptionPane.showMessageDialog(this, "Iniciando servidor");
-        new Thread(new Runnable() {
-            public void run() {
-                try {
-                    InetAddress addr = InetAddress.getLocalHost();
-                    serverSocket = new ServerSocket(PORT);
-                    mensajesTxt.append("Servidor TCP en ejecución: "+ addr + " ,Puerto " + serverSocket.getLocalPort()+ "\n");
-                    while (true) {
-                        Socket clientSocket = serverSocket.accept();
-                        ClientHandler handler = new ClientHandler(clientSocket);
-                        handler.start();
-                    }
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    mensajesTxt.append("Error en el servidor: " + ex.getMessage() + "\n");
+        mensajesTxt.append("Iniciando servidor...\n");
+        new Thread(() -> {
+            try {
+                serverSocket = new ServerSocket(PORT);
+                mensajesTxt.append("Servidor activo en puerto " + PORT + "\n");
+
+                while (true) {
+                    Socket socket = serverSocket.accept();
+                    new ClientHandler(socket).start();
                 }
+            } catch (IOException e) {
+                mensajesTxt.append("Error servidor: " + e.getMessage() + "\n");
             }
         }).start();
     }
 
-    private void appendServerMessage(String message) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                mensajesTxt.append(message + "\n");
-            }
-        });
+    private void broadcast(String from, String msg) {
+        String formatted = "[" + from + "]: " + msg;
+        clients.values().forEach(c -> c.send(formatted));
+        mensajesTxt.append(formatted + "\n");
     }
 
-    private void broadcast(String fromClient, String message) {
-        String formatted = "[" + fromClient + "]: " + message;
-        for (ClientHandler handler : clients.values()) {
-            handler.send(formatted);
+    private void sendPrivate(String from, String to, String msg) {
+        ClientHandler target = clients.get(to);
+        if (target != null) {
+            target.send("[Privado de " + from + "]: " + msg);
+        } else {
+            clients.get(from).send("Servidor: Cliente no encontrado");
         }
-        appendServerMessage(formatted);
     }
 
-    private void sendToClient(String fromClient, String toClient, String message) {
-        ClientHandler target = clients.get(toClient);
-        if (target == null) {
-            ClientHandler sender = clients.get(fromClient);
-            if (sender != null) {
-                sender.send("Servidor: Cliente no encontrado: " + toClient);
-            }
-            appendServerMessage("Intento fallido de " + fromClient + " hacia " + toClient + ": " + message);
-            return;
+    private String generateName(String base) {
+        if (base == null || base.isBlank()) {
+            return "cliente-" + counter.getAndIncrement();
         }
-        String formatted = "[DM de " + fromClient + "]: " + message;
-        target.send(formatted);
-        appendServerMessage(formatted);
-    }
-
-    private String registerClientName(String requestedName) {
-        String baseName = requestedName == null ? "" : requestedName.trim();
-        if (baseName.isEmpty()) {
-            baseName = "cliente-" + clientCounter.getAndIncrement();
+        String name = base;
+        int i = 1;
+        while (clients.containsKey(name)) {
+            name = base + "-" + i++;
         }
-        String candidate = baseName;
-        int suffix = 1;
-        while (clients.containsKey(candidate)) {
-            candidate = baseName + "-" + suffix;
-            suffix++;
-        }
-        return candidate;
+        return name;
     }
 
     private class ClientHandler extends Thread {
-        private final Socket socket;
+        private Socket socket;
         private BufferedReader in;
         private PrintWriter out;
-        private String clientName;
+        private String name;
 
         ClientHandler(Socket socket) {
             this.socket = socket;
@@ -166,56 +100,39 @@ public class PrincipalSrv extends javax.swing.JFrame {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out = new PrintWriter(socket.getOutputStream(), true);
 
-                String firstLine = in.readLine();
-                if (firstLine != null && firstLine.startsWith("NOMBRE:")) {
-                    clientName = registerClientName(firstLine.substring("NOMBRE:".length()));
-                } else {
-                    clientName = registerClientName("");
-                }
-                clients.put(clientName, this);
-                send("Servidor: Conectado como " + clientName);
-                appendServerMessage("Cliente conectado: " + clientName);
+                String line = in.readLine();
+                name = generateName(line.replace("NOMBRE:", ""));
+                clients.put(name, this);
 
-                String linea;
-                while ((linea = in.readLine()) != null) {
-                    if (linea.startsWith("/msg ")) {
-                        String payload = linea.substring(5).trim();
-                        int spaceIdx = payload.indexOf(' ');
-                        if (spaceIdx <= 0) {
-                            send("Servidor: Uso correcto: /msg <cliente> <mensaje>");
-                            continue;
+                send("Servidor: Bienvenido " + name);
+                broadcast("Servidor", name + " se ha conectado");
+
+                while ((line = in.readLine()) != null) {
+                    if (line.equals("/users")) {
+                        send("Usuarios conectados: " + clients.keySet());
+                    } else if (line.startsWith("/msg ")) {
+                        String[] parts = line.split(" ", 3);
+                        if (parts.length == 3) {
+                            sendPrivate(name, parts[1], parts[2]);
                         }
-                        String target = payload.substring(0, spaceIdx).trim();
-                        String body = payload.substring(spaceIdx + 1).trim();
-                        sendToClient(clientName, target, body);
                     } else {
-                        broadcast(clientName, linea);
+                        broadcast(name, line);
                     }
                 }
-            } catch (IOException ex) {
-                appendServerMessage("Error con cliente: " + ex.getMessage());
+            } catch (IOException ignored) {
             } finally {
-                if (clientName != null) {
-                    clients.remove(clientName);
-                    appendServerMessage("Cliente desconectado: " + clientName);
-                }
-                try {
-                    socket.close();
-                } catch (IOException ignored) {
-                }
+                clients.remove(name);
+                broadcast("Servidor", name + " se ha desconectado");
+                try { socket.close(); } catch (IOException ignored) {}
             }
         }
 
-        void send(String message) {
-            if (out != null) {
-                out.println(message);
-            }
+        void send(String msg) {
+            out.println(msg);
         }
     }
 
-    // Variables declaration - do not modify
-    private javax.swing.JButton bIniciar;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JTextArea mensajesTxt;
-    private javax.swing.JScrollPane jScrollPane1;
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new PrincipalSrv().setVisible(true));
+    }
 }
