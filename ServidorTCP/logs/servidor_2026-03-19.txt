@@ -1,0 +1,230 @@
+[15:02:42] -----------------------------------------------------------------------------------------
+[15:02:42] [INICIO] Servidor TCP activo en puerto 12345
+[15:02:42] [CONFIG] Watchdog        : 3 reinicios máx
+[15:02:42] [CONFIG] Delay reinicio  : 5s
+[15:02:42] [CONFIG] Heartbeat       : cada 30s
+[15:02:42] [CONFIG] Timeout heartbeat: 10s
+[15:02:42] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:02:42] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:02:42] -----------------------------------------------------------------------------------------
+[15:02:42] [ESTADO] No hay cola previa guardada.
+[15:02:47] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:02:47] [ESTADO] Clientes registrados: 0
+[15:02:47] -----------------------------------------------------------------------------------------
+[15:02:47] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:02:47] [INFO] Watchdog NO actuará — apagado intencional.
+[15:02:47] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:02:47] [INFO] Los clientes ejecutarán política de reconexión.
+[15:02:47] -----------------------------------------------------------------------------------------
+[15:04:16] -----------------------------------------------------------------------------------------
+[15:04:16] [INICIO] Servidor TCP activo en puerto 12345
+[15:04:16] [CONFIG] Watchdog        : 3 reinicios máx
+[15:04:16] [CONFIG] Delay reinicio  : 5s
+[15:04:16] [CONFIG] Heartbeat       : cada 30s
+[15:04:16] [CONFIG] Timeout heartbeat: 10s
+[15:04:16] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:04:16] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:04:16] -----------------------------------------------------------------------------------------
+[15:04:16] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:04:21] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:04:21] [ESTADO] Clientes registrados: 0
+[15:04:21] -----------------------------------------------------------------------------------------
+[15:04:21] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:04:21] [INFO] Watchdog NO actuará — apagado intencional.
+[15:04:21] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:04:21] [INFO] Los clientes ejecutarán política de reconexión.
+[15:04:21] -----------------------------------------------------------------------------------------
+[15:06:08] -----------------------------------------------------------------------------------------
+[15:06:08] [INICIO] Servidor TCP activo en puerto 12345
+[15:06:08] [CONFIG] Watchdog        : 3 reinicios máx
+[15:06:08] [CONFIG] Delay reinicio  : 5s
+[15:06:08] [CONFIG] Heartbeat       : cada 30s
+[15:06:08] [CONFIG] Timeout heartbeat: 10s
+[15:06:08] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:06:08] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:06:08] -----------------------------------------------------------------------------------------
+[15:06:08] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:06:15] [VENTANA] Ventana cerrada — simulando caída para activar watchdog...
+[15:06:15] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:06:15] [ESTADO] Clientes registrados: 0
+[15:06:15] -----------------------------------------------------------------------------------------
+[15:06:15] [WATCHDOG] Caída detectada. Reinicio 1/3
+[15:06:15] [WATCHDOG] Estado guardado. Reiniciando en 5s...
+[15:06:15] [WATCHDOG] Reiniciando en 5s...
+[15:06:16] [WATCHDOG] Reiniciando en 4s...
+[15:06:17] [WATCHDOG] Reiniciando en 3s...
+[15:06:18] [WATCHDOG] Reiniciando en 2s...
+[15:06:19] [WATCHDOG] Reiniciando en 1s...
+[15:06:20] [WATCHDOG] Levantando servidor...
+[15:06:20] -----------------------------------------------------------------------------------------
+[15:06:20] [WATCHDOG] Servidor reiniciado automáticamente (1/3)
+[15:06:20] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:06:20] [RECUPERACIÓN] Log del día encontrado: servidor_2026-03-19.txt
+[15:06:20]   [15:02:42] -----------------------------------------------------------------------------------------
+[15:06:20]   [15:02:42] [INICIO] Servidor TCP activo en puerto 12345
+[15:06:20]   [15:02:42] [CONFIG] Watchdog        : 3 reinicios máx
+[15:06:20]   [15:02:42] [CONFIG] Delay reinicio  : 5s
+[15:06:20]   [15:02:42] [CONFIG] Heartbeat       : cada 30s
+[15:06:20]   [15:02:42] [CONFIG] Timeout heartbeat: 10s
+[15:06:20]   [15:02:42] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:06:20]   [15:02:42] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:06:20]   [15:02:42] -----------------------------------------------------------------------------------------
+[15:06:20]   [15:02:42] [ESTADO] No hay cola previa guardada.
+[15:06:20]   ... (ver archivo completo en /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs/servidor_2026-03-19.txt)
+[15:06:20] -----------------------------------------------------------------------------------------
+[15:06:27] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:06:27] [ESTADO] Clientes registrados: 0
+[15:06:27] -----------------------------------------------------------------------------------------
+[15:06:27] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:06:27] [INFO] Watchdog NO actuará — apagado intencional.
+[15:06:27] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:06:27] [INFO] Los clientes ejecutarán política de reconexión.
+[15:06:27] -----------------------------------------------------------------------------------------
+[15:10:16] -----------------------------------------------------------------------------------------
+[15:10:16] [INICIO] Servidor TCP activo en puerto 12345
+[15:10:16] [CONFIG] Watchdog        : 3 reinicios máx
+[15:10:16] [CONFIG] Delay reinicio  : 5s
+[15:10:16] [CONFIG] Heartbeat       : cada 30s
+[15:10:16] [CONFIG] Timeout heartbeat: 10s
+[15:10:16] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:10:16] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:10:16] -----------------------------------------------------------------------------------------
+[15:10:16] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:10:22] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:10:22] [ESTADO] Clientes registrados: 0
+[15:10:22] -----------------------------------------------------------------------------------------
+[15:10:22] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:10:22] [INFO] Watchdog NO actuará — apagado intencional.
+[15:10:22] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:10:22] [INFO] Los clientes ejecutarán política de reconexión.
+[15:10:22] -----------------------------------------------------------------------------------------
+[15:14:24] -----------------------------------------------------------------------------------------
+[15:14:24] [INICIO] Servidor TCP activo en puerto 12345
+[15:14:24] [CONFIG] Watchdog        : 3 reinicios máx
+[15:14:24] [CONFIG] Delay reinicio  : 5s
+[15:14:24] [CONFIG] Heartbeat       : cada 30s
+[15:14:24] [CONFIG] Timeout heartbeat: 10s
+[15:14:24] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:14:24] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:14:24] -----------------------------------------------------------------------------------------
+[15:14:24] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:14:35] [SERVIDOR]: Nathalie se ha conectado
+[15:14:35] [SERVIDOR]: Nathalie se ha conectado
+[15:14:35] [+] Conectado: Nathalie [/127.0.0.1]
+[15:14:35] [CONEXIÓN] Nathalie
+[15:14:45] [SERVIDOR]: Rocio se ha conectado
+[15:14:45] [SERVIDOR]: Rocio se ha conectado
+[15:14:45] [+] Conectado: Rocio [/127.0.0.1]
+[15:14:45] [CONEXIÓN] Rocio
+[15:14:54] [HEARTBEAT] Enviando ping a 2 cliente(s)...
+[15:14:54] [HEARTBEAT] Pong recibido de Rocio
+[15:14:54] [HEARTBEAT] Pong recibido de Nathalie
+[15:15:04] [SERVIDOR]: Rocio se ha desconectado
+[15:15:04] [SERVIDOR]: Rocio se ha desconectado
+[15:15:04] [DESCONEXIÓN] Rocio
+[15:15:04] [-] Desconectado: Rocio
+[15:15:04] [HEARTBEAT] Sin respuesta de Nathalie — desconectando limpiamente.
+[15:15:04] [HEARTBEAT] Sin respuesta de Rocio — desconectando limpiamente.
+[15:15:04] [RED] Nathalie perdió la conexión: Socket closed
+[15:15:04] [SERVIDOR]: Nathalie se ha desconectado
+[15:15:04] [SERVIDOR]: Nathalie se ha desconectado
+[15:15:04] [DESCONEXIÓN] Nathalie
+[15:15:04] [-] Desconectado: Nathalie
+[15:15:04] [SERVIDOR]: Nathalie se ha conectado
+[15:15:04] [SERVIDOR]: Nathalie se ha conectado
+[15:15:04] [+] Conectado: Nathalie [/127.0.0.1]
+[15:15:04] [CONEXIÓN] Nathalie
+[15:15:24] [HEARTBEAT] Enviando ping a 1 cliente(s)...
+[15:15:24] [HEARTBEAT] Pong recibido de Nathalie
+[15:15:25] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:15:25] [ESTADO] Clientes registrados: 1
+[15:15:25] -----------------------------------------------------------------------------------------
+[15:15:25] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:15:25] [INFO] Watchdog NO actuará — apagado intencional.
+[15:15:25] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:15:25] [INFO] Los clientes ejecutarán política de reconexión.
+[15:15:25] -----------------------------------------------------------------------------------------
+[15:29:21] -----------------------------------------------------------------------------------------
+[15:29:21] [INICIO] Servidor TCP activo en puerto 12345
+[15:29:21] [CONFIG] Watchdog        : 3 reinicios máx
+[15:29:21] [CONFIG] Delay reinicio  : 5s
+[15:29:21] [CONFIG] Heartbeat       : cada 30s
+[15:29:21] [CONFIG] Timeout heartbeat: 10s
+[15:29:21] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:29:21] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:29:21] -----------------------------------------------------------------------------------------
+[15:29:21] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:29:25] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:29:25] [ESTADO] Clientes registrados: 0
+[15:29:25] -----------------------------------------------------------------------------------------
+[15:29:25] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:29:25] [INFO] Watchdog NO actuará — apagado intencional.
+[15:29:25] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:29:25] [INFO] Los clientes ejecutarán política de reconexión.
+[15:29:25] -----------------------------------------------------------------------------------------
+[15:30:42] -----------------------------------------------------------------------------------------
+[15:30:42] [INICIO] Servidor TCP activo en puerto 12345
+[15:30:42] [CONFIG] Watchdog        : 3 reinicios máx
+[15:30:42] [CONFIG] Delay reinicio  : 5s
+[15:30:42] [CONFIG] Heartbeat       : cada 30s
+[15:30:42] [CONFIG] Timeout heartbeat: 10s
+[15:30:42] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:30:42] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:30:42] -----------------------------------------------------------------------------------------
+[15:30:42] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:30:52] [ESTADO] Cola guardada: 0 mensaje(s) pendiente(s).
+[15:30:52] [ESTADO] Clientes registrados: 0
+[15:30:52] -----------------------------------------------------------------------------------------
+[15:30:52] [APAGADO MANUAL] Servidor detenido por el administrador.
+[15:30:52] [INFO] Watchdog NO actuará — apagado intencional.
+[15:30:52] [ESTADO] Cola y log guardados en: /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:30:52] [INFO] Los clientes ejecutarán política de reconexión.
+[15:30:52] -----------------------------------------------------------------------------------------
+[15:35:47] -----------------------------------------------------------------------------------------
+[15:35:47] [INICIO] Servidor TCP activo en puerto 12345
+[15:35:47] [CONFIG] Watchdog        : 3 reinicios máx
+[15:35:47] [CONFIG] Delay reinicio  : 5s
+[15:35:47] [CONFIG] Heartbeat       : cada 30s
+[15:35:47] [CONFIG] Timeout heartbeat: 10s
+[15:35:47] [INFO]   Logs            : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/logs
+[15:35:47] [INFO]   Estado          : /Users/na7ha/Documents/Na7ha/Universidad/2026/Sistemas_Distribuidos/Cliente_Servidor/ServidorTCP/estado
+[15:35:47] -----------------------------------------------------------------------------------------
+[15:35:47] [RECUPERACIÓN] Cola restaurada: 0 mensaje(s) pendiente(s).
+[15:36:00] [SERVIDOR]: Nathalie se ha conectado
+[15:36:00] [SERVIDOR]: Nathalie se ha conectado
+[15:36:00] [+] Conectado: Nathalie [/127.0.0.1]
+[15:36:00] [CONEXIÓN] Nathalie
+[15:36:11] [SERVIDOR]: Nathalie1 se ha conectado
+[15:36:11] [SERVIDOR]: Nathalie1 se ha conectado
+[15:36:11] [+] Conectado: Nathalie1 [/127.0.0.1]
+[15:36:11] [CONEXIÓN] Nathalie1
+[15:36:15] [SERVIDOR]: Nathalie1 se ha desconectado
+[15:36:15] [SERVIDOR]: Nathalie1 se ha desconectado
+[15:36:15] [DESCONEXIÓN] Nathalie1
+[15:36:15] [-] Desconectado: Nathalie1
+[15:36:17] [HEARTBEAT] Enviando ping a 1 cliente(s)...
+[15:36:17] [HEARTBEAT] Pong recibido de Nathalie
+[15:36:27] [HEARTBEAT] Sin respuesta de Nathalie — desconectando limpiamente.
+[15:36:27] [RED] Nathalie perdió la conexión: Socket closed
+[15:36:27] [SERVIDOR]: Nathalie se ha desconectado
+[15:36:27] [SERVIDOR]: Nathalie se ha desconectado
+[15:36:27] [DESCONEXIÓN] Nathalie
+[15:36:27] [-] Desconectado: Nathalie
+[15:36:27] [SERVIDOR]: Nathalie se ha conectado
+[15:36:27] [SERVIDOR]: Nathalie se ha conectado
+[15:36:27] [+] Conectado: Nathalie [/127.0.0.1]
+[15:36:27] [CONEXIÓN] Nathalie
+[15:36:47] [HEARTBEAT] Enviando ping a 1 cliente(s)...
+[15:36:47] [HEARTBEAT] Pong recibido de Nathalie
+[15:36:57] [HEARTBEAT] Sin respuesta de Nathalie — desconectando limpiamente.
+[15:36:57] [RED] Nathalie perdió la conexión: Socket closed
+[15:36:57] [SERVIDOR]: Nathalie se ha desconectado
+[15:36:57] [SERVIDOR]: Nathalie se ha desconectado
+[15:36:57] [DESCONEXIÓN] Nathalie
+[15:36:57] [-] Desconectado: Nathalie
+[15:36:57] [SERVIDOR]: Nathalie se ha conectado
+[15:36:57] [SERVIDOR]: Nathalie se ha conectado
+[15:36:57] [+] Conectado: Nathalie [/127.0.0.1]
+[15:36:57] [CONEXIÓN] Nathalie
+[15:37:17] [HEARTBEAT] Enviando ping a 1 cliente(s)...
+[15:37:17] [HEARTBEAT] Pong recibido de Nathalie

@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.*;
 import java.awt.*;
+import java.awt.event.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +45,13 @@ public class PrincipalSrv extends JFrame {
     private static final int    MAX_REINICIOS       = 3;    // máx reinicios watchdog
     private static final int    INTERVALO_HEARTBEAT = 30;   // segundos entre pings
     private static final int    TIMEOUT_HEARTBEAT   = 10;   // segundos esperando pong
+
+    // ── Validaciones ──────────────────────────────────────────
+    private static final int      MAX_CLIENTES        = 10;  // limite de clientes simultáneos
+    private static final String   REGEX_NOMBRE        = "^[a-zA-Z0-9_]{2,20}$";
+    private static final String[] PALABRAS_RESERVADAS = {"SERVIDOR", "TODOS", "*"};
+    private static final String[] EXT_BLOQUEADAS      = {".exe", ".bat", ".sh", ".cmd", ".msi"};
+    private static final long     MAX_TAMANIO_ARCHIVO = 10 * 1024 * 1024; // 10 MB
 
     // ── Rutas de persistencia ─────────────────────────────────
     private static final String BASE_DIR    = System.getProperty("user.home") + File.separator + "ServidorTCP";
@@ -89,7 +97,22 @@ public class PrincipalSrv extends JFrame {
     private void initComponents() {
         setTitle("Servidor TCP");
         setSize(680, 580);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+
+        // Interceptar cierre de ventana con X
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (activo.get()) {
+                    // NO tocar activo aquí — el hilo del servidor lo detecta por SocketException
+                    logUI("[VENTANA] Ventana cerrada — el watchdog tomará control...");
+                    setVisible(false); // ocultar ventana, JVM sigue viva
+                    cerrarServerSocket(); // lanza SocketException en accept() → activa watchdog
+                } else {
+                    System.exit(0);
+                }
+            }
+        });
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
@@ -101,7 +124,7 @@ public class PrincipalSrv extends JFrame {
         titulo.setFont(new Font("Dialog", Font.BOLD, 15));
         titulo.setForeground(new Color(160, 0, 0));
 
-        lblEstado   = new JLabel("⬤ Detenido");
+        lblEstado   = new JLabel("Detenido");
         lblEstado.setFont(new Font("Dialog", Font.BOLD, 12));
         lblEstado.setForeground(Color.GRAY);
 
@@ -112,16 +135,25 @@ public class PrincipalSrv extends JFrame {
         lblCola.setFont(new Font("Dialog", Font.PLAIN, 12));
         lblCola.setForeground(new Color(150, 80, 0));
 
-        btnIniciar  = new JButton("INICIAR");
+        btnIniciar = new JButton("INICIAR");
         btnIniciar.setBackground(new Color(0, 140, 0));
         btnIniciar.setForeground(Color.WHITE);
         btnIniciar.setFont(new Font("Dialog", Font.BOLD, 12));
-        btnIniciar.addActionListener(e -> iniciarServidor(false));
+        btnIniciar.setOpaque(true);
+        btnIniciar.setBorderPainted(false);
+        btnIniciar.setFocusPainted(false);
+        btnIniciar.addActionListener(e -> {
+            btnIniciar.setBackground(new Color(160, 160, 160)); // gris al hacer clic
+            iniciarServidor(false);
+        });
 
-        btnApagar   = new JButton("APAGAR");
+        btnApagar = new JButton("APAGAR");
         btnApagar.setBackground(new Color(180, 0, 0));
         btnApagar.setForeground(Color.WHITE);
         btnApagar.setFont(new Font("Dialog", Font.BOLD, 12));
+        btnApagar.setOpaque(true);
+        btnApagar.setBorderPainted(false);
+        btnApagar.setFocusPainted(false);
         btnApagar.setEnabled(false);
         btnApagar.addActionListener(e -> apagarManual());
 
@@ -184,23 +216,26 @@ public class PrincipalSrv extends JFrame {
                 activo.set(true);
                 apagadoManual.set(false);
 
-                actualizarEstado("⬤ Activo en :" + PORT, new Color(0, 150, 0));
+                actualizarEstado("Activo en :" + PORT, new Color(0, 150, 0));
+                SwingUtilities.invokeLater(() -> setVisible(true)); // mostrar ventana si estaba oculta
                 SwingUtilities.invokeLater(() -> {
                     btnIniciar.setEnabled(false);
+                    btnIniciar.setBackground(new Color(160, 160, 160)); // gris deshabilitado
                     btnApagar.setEnabled(true);
+                    btnApagar.setBackground(new Color(180, 0, 0));      // rojo activo
                 });
 
                 // Iniciar heartbeat scheduler
                 iniciarHeartbeat();
 
                 if (porWatchdog) {
-                    logUI("------------------------------------------------------------------------------------");
+                    logUI("---------------------------------------------------------------------------------------");
                     logUI("[WATCHDOG] Servidor reiniciado automáticamente ("
                             + reinicios.get() + "/" + MAX_REINICIOS + ")");
                     recuperarEstado(); // restaurar cola, log, clientes
-                    logUI("------------------------------------------------------------------------------------");
+                    logUI("---------------------------------------------------------------------------------------");
                 } else {
-                    logUI("------------------------------------------------------------------------------------");
+                    logUI("---------------------------------------------------------------------------------------");
                     logUI("[INICIO] Servidor TCP activo en puerto " + PORT);
                     logUI("[CONFIG] Watchdog        : " + MAX_REINICIOS + " reinicios máx");
                     logUI("[CONFIG] Delay reinicio  : " + DELAY_REINICIO + "s");
@@ -208,7 +243,7 @@ public class PrincipalSrv extends JFrame {
                     logUI("[CONFIG] Timeout heartbeat: " + TIMEOUT_HEARTBEAT + "s");
                     logUI("[INFO]   Logs            : " + DIR_LOGS);
                     logUI("[INFO]   Estado          : " + DIR_ESTADO);
-                    logUI("------------------------------------------------------------------------------------");
+                    logUI("---------------------------------------------------------------------------------------");
                     cargarColaPersistente(); // cargar cola guardada
                 }
 
@@ -218,8 +253,7 @@ public class PrincipalSrv extends JFrame {
                         Socket cliente = serverSocket.accept();
                         new ClientHandler(cliente).start();
                     } catch (SocketException ex) {
-                        if (activo.get())
-                            logUI("[ERROR] ServerSocket cerrado inesperadamente: " + ex.getMessage());
+                        logUI("[CAIDA] ServerSocket cerrado: " + ex.getMessage());
                         break;
                     }
                 }
@@ -230,11 +264,11 @@ public class PrincipalSrv extends JFrame {
 
             } catch (BindException ex) {
                 logUI("[ERROR] Puerto " + PORT + " ya está en uso.");
-                actualizarEstado("⬤ Error de puerto", new Color(180, 0, 0));
+                actualizarEstado("Error de puerto", new Color(180, 0, 0));
                 SwingUtilities.invokeLater(() -> btnIniciar.setEnabled(true));
             } catch (IOException ex) {
                 logUI("[ERROR] No se pudo iniciar: " + ex.getMessage());
-                actualizarEstado("⬤ Error", new Color(180, 0, 0));
+                actualizarEstado("Error", new Color(180, 0, 0));
                 SwingUtilities.invokeLater(() -> btnIniciar.setEnabled(true));
             }
         }).start();
@@ -252,28 +286,28 @@ public class PrincipalSrv extends JFrame {
         guardarEstado();
         cerrarServerSocket();
 
-        actualizarEstado("⬤ Apagado manualmente", Color.GRAY);
+        actualizarEstado("Apagado manualmente", Color.GRAY);
         SwingUtilities.invokeLater(() -> {
             btnIniciar.setEnabled(true);
             btnApagar.setEnabled(false);
         });
 
-        logUI("------------------------------------------------------------------------------------");
+        logUI("---------------------------------------------------------------------------------------");
         logUI("[APAGADO MANUAL] Servidor detenido por el administrador.");
         logUI("[ESCENARIO 2] Watchdog NO actuará — apagado intencional.");
         logUI("[ESTADO] Cola y log guardados en: " + DIR_ESTADO);
         logUI("[INFO] Los clientes ejecutarán política de reconexión.");
-        logUI("------------------------------------------------------------------------------------");
+        logUI("---------------------------------------------------------------------------------------");
     }
 
     // ── WATCHDOG ──────────────────────────────────────────────
     private void activarWatchdog() {
         if (reinicios.get() >= MAX_REINICIOS) {
-            logUI("------------------------------------------------------------------------------------");
+            logUI("---------------------------------------------------------------------------------------");
             logUI("[WATCHDOG] Límite de reinicios alcanzado (" + MAX_REINICIOS + "/" + MAX_REINICIOS + ").");
             logUI("[WATCHDOG] Reinicia manualmente con el botón INICIAR.");
-            logUI("------------------------------------------------------------------------------------");
-            actualizarEstado("⬤ Watchdog agotado", new Color(180, 0, 0));
+            logUI("---------------------------------------------------------------------------------------");
+            actualizarEstado("Watchdog agotado", new Color(180, 0, 0));
             SwingUtilities.invokeLater(() -> {
                 btnIniciar.setEnabled(true);
                 btnApagar.setEnabled(false);
@@ -285,10 +319,10 @@ public class PrincipalSrv extends JFrame {
         activo.set(false);
         guardarEstado();
 
-        logUI("------------------------------------------------------------------------------------");
+        logUI("---------------------------------------------------------------------------------------");
         logUI("[WATCHDOG] Caída detectada. Reinicio " + reinicios.get() + "/" + MAX_REINICIOS);
         logUI("[WATCHDOG] Estado guardado. Reiniciando en " + DELAY_REINICIO + "s...");
-        actualizarEstado("⬤ Watchdog: reiniciando...", new Color(180, 100, 0));
+        actualizarEstado("Watchdog: reiniciando...", new Color(180, 100, 0));
 
         new Thread(() -> {
             for (int s = DELAY_REINICIO; s >= 1; s--) {
@@ -524,20 +558,52 @@ public class PrincipalSrv extends JFrame {
 
                 String primera = in.readLine();
                 if (primera == null) return;
-                nombre = generarNombre(primera.replace("NOMBRE:", "").trim());
+                String nombreSolicitado = primera.replace("NOMBRE:", "").trim();
+
+                // VALIDACION: limite de clientes
+                if (clientes.size() >= MAX_CLIENTES) {
+                    enviar("SERVIDOR: Servidor lleno. Maximo " + MAX_CLIENTES + " clientes permitidos.");
+                    logUI("[VALIDACION] Conexion rechazada — limite de " + MAX_CLIENTES + " clientes alcanzado.");
+                    return;
+                }
+
+                // VALIDACION: caracteres permitidos en el nombre
+                if (!nombreSolicitado.matches(REGEX_NOMBRE)) {
+                    enviar("SERVIDOR: Nombre invalido. Solo letras, numeros y _ (2-20 caracteres).");
+                    logUI("[VALIDACION] Nombre rechazado: '" + nombreSolicitado + "' — caracteres no permitidos.");
+                    return;
+                }
+
+                // VALIDACION: palabras reservadas
+                for (String reservada : PALABRAS_RESERVADAS) {
+                    if (nombreSolicitado.equalsIgnoreCase(reservada)) {
+                        enviar("SERVIDOR: El nombre '" + nombreSolicitado + "' es una palabra reservada.");
+                        logUI("[VALIDACION] Nombre rechazado: '" + nombreSolicitado + "' — palabra reservada.");
+                        return;
+                    }
+                }
+
+                nombre = generarNombre(nombreSolicitado);
                 clientes.put(nombre, this);
                 actualizarContador();
 
                 enviar("SERVIDOR: Bienvenido " + nombre);
                 broadcast("SERVIDOR", nombre + " se ha conectado");
                 logUI("[+] Conectado: " + nombre + " [" + socket.getInetAddress() + "]");
-                escribirLogArchivo("[CONEXIÓN] " + nombre);
+                escribirLogArchivo("[CONEXION] " + nombre);
 
                 // Entregar mensajes pendientes de la cola
                 entregarColaPendiente(this);
 
                 String linea;
                 while ((linea = in.readLine()) != null) {
+
+                    // VALIDACION: mensaje vacio
+                    if (linea.trim().isEmpty()) {
+                        logUI("[VALIDACION] Mensaje vacio ignorado de " + nombre);
+                        continue;
+                    }
+
                     if (linea.equals("PONG")) {
                         // Respuesta al heartbeat
                         ultimoPong = System.currentTimeMillis();
