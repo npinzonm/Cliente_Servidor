@@ -7,65 +7,40 @@ import java.awt.*;
 import java.util.LinkedList;
 import java.util.Queue;
 
-/**
- * Cliente TCP con políticas completas:
- *
- * BACKOFF EXPONENCIAL:
- *   La espera entre reintentos se duplica con cada intento fallido.
- *   Intento 1 → DELAY_BASE s
- *   Intento 2 → DELAY_BASE * 2 s
- *   Intento 3 → DELAY_BASE * 4 s
- *   ...hasta MAX_REINTENTOS
- *
- * MENSAJES PENDIENTES:
- *   Los mensajes enviados mientras estaba desconectado se guardan
- *   localmente en ~/ClienteTCP/pendientes_NOMBRE.txt
- *   Al reconectarse se reenvían automáticamente.
- *
- * HEARTBEAT:
- *   Responde automáticamente a los pings del servidor con PONG.
- *
- * VALIDACIONES:
- *   - Nombre: solo letras, numeros y _ (2-20 caracteres)
- *   - Nombre: palabras reservadas bloqueadas
- *   - Archivo: extensiones bloqueadas (.exe, .bat, .sh, .cmd, .msi)
- *   - Archivo: nombre peligroso bloqueado (path traversal)
- *   - Archivo: tamanio maximo 10MB
- *
- * Author: Vinni 2024 | Nathalie Pinzón 2026
+/*
+ * Author: Vinni 2024 | Nathalie Pinzon 2026
  */
 public class PrincipalCli extends JFrame {
 
-    // ── Configuración ─────────────────────────────────────────
+    // -- Configuracion ----------------------------------------
     private static final String HOST             = "localhost";
     private static final int    PORT             = 12345;
-    private static final int    MAX_REINTENTOS   = 5;
-    private static final int    DELAY_BASE       = 2;    // segundos base para backoff
-    private static final int    TIMEOUT_CONEXION = 5000; // ms
+    private static final int    PORT_ARCHIVOS    = 12346;
+    private static final int    MAX_REINTENTOS   = 3;
+    private static final int    DELAY_BASE       = 2;
+    private static final int    TIMEOUT_CONEXION = 5000;
 
-    // ── Validaciones ──────────────────────────────────────────
+    // -- Validaciones -----------------------------------------
     private static final String   REGEX_NOMBRE        = "^[a-zA-Z0-9_]{2,20}$";
     private static final String[] PALABRAS_RESERVADAS = {"SERVIDOR", "TODOS", "*"};
     private static final String[] EXT_BLOQUEADAS      = {".exe", ".bat", ".sh", ".cmd", ".msi"};
-    private static final long     MAX_TAMANIO_ARCHIVO = 10 * 1024 * 1024; // 10 MB
+    private static final long     MAX_TAMANIO_ARCHIVO = 10 * 1024 * 1024;
 
-    // ── Ruta local de mensajes pendientes ─────────────────────
+    // -- Ruta local de mensajes pendientes --------------------
     private static final String DIR_CLIENTE =
             System.getProperty("user.home") + File.separator + "ClienteTCP";
 
-    // ── Estado ────────────────────────────────────────────────
+    // -- Estado -----------------------------------------------
     private Socket           socket;
     private PrintWriter      out;
     private BufferedReader   in;
-    private DataOutputStream dataOut;
     private String           miNombre;
     private boolean          conectado    = false;
     private boolean          reconectando = false;
 
-    /** Cola local de mensajes pendientes (en memoria) */
     private final Queue<String[]> mensajesPendientes = new LinkedList<>();
 
-    // ── GUI ───────────────────────────────────────────────────
+    // -- GUI --------------------------------------------------
     private JTextArea    mensajes;
     private JTextField   mensaje;
     private JButton      btnConectar;
@@ -82,7 +57,7 @@ public class PrincipalCli extends JFrame {
         new File(DIR_CLIENTE).mkdirs();
     }
 
-    // ── INIT GUI ─────────────────────────────────────────────
+    // -- INIT GUI ---------------------------------------------
     private void initComponents() {
         setTitle("Cliente TCP");
         setSize(980, 690);
@@ -90,7 +65,6 @@ public class PrincipalCli extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
-        // NORTE
         JPanel panelNorte = new JPanel(new BorderLayout(10, 5));
         panelNorte.setBorder(BorderFactory.createEmptyBorder(15, 20, 5, 20));
 
@@ -113,15 +87,11 @@ public class PrincipalCli extends JFrame {
         btnConectar.setOpaque(true);
         btnConectar.setBorderPainted(false);
         btnConectar.setFocusPainted(false);
-        btnConectar.addActionListener(e -> {
-            btnConectar.setBackground(new Color(160, 160, 160));
-            iniciarConexion();
-        });
+        btnConectar.addActionListener(e -> iniciarConexion());
 
-        // Etiqueta con la política visible
         JLabel lblPolitica = new JLabel(
                 "<html><i>" +
-                        "<b>Política de reconexión:</b> " +
+                        "<b>Politica de reconexion:</b> " +
                         MAX_REINTENTOS + " reintentos" +
                         " | Backoff exponencial desde " + DELAY_BASE + "s" +
                         " | Timeout: " + (TIMEOUT_CONEXION / 1000) + "s por intento" +
@@ -151,7 +121,6 @@ public class PrincipalCli extends JFrame {
         panelNorte.add(lblPolitica,     BorderLayout.CENTER);
         panelNorte.add(barraReintentos, BorderLayout.SOUTH);
 
-        // CENTRO
         mensajes = new JTextArea();
         mensajes.setEditable(false);
         mensajes.setFont(new Font("Dialog", Font.PLAIN, 13));
@@ -160,7 +129,6 @@ public class PrincipalCli extends JFrame {
         JScrollPane scroll = new JScrollPane(mensajes);
         scroll.setBorder(BorderFactory.createTitledBorder("Historial"));
 
-        // SUR
         JPanel panelSur = new JPanel(new BorderLayout(10, 0));
         panelSur.setBorder(BorderFactory.createEmptyBorder(8, 15, 12, 15));
 
@@ -200,29 +168,69 @@ public class PrincipalCli extends JFrame {
         add(panelSur,   BorderLayout.SOUTH);
     }
 
-    // ── INICIAR CONEXION ──────────────────────────────────────
+    // -- INICIAR CONEXION -------------------------------------
+    // Se ejecuta en el hilo de Swing (desde el ActionListener del boton).
+    // Pide el nombre aqui, antes de lanzar el hilo de backoff, para no
+    // mezclar dialogos de Swing con el hilo de red.
     private void iniciarConexion() {
         if (conectado || reconectando) return;
+
+        // Pedir nombre solo cuando no hay uno activo
+        if (miNombre == null) {
+            String nombre = JOptionPane.showInputDialog(
+                    this,
+                    "Ingresa tu nombre:",
+                    "Nombre de usuario",
+                    JOptionPane.QUESTION_MESSAGE);
+
+            if (nombre == null || nombre.trim().isEmpty()) {
+                return; // usuario cancelo, no hacer nada
+            }
+
+            nombre = nombre.trim();
+
+            // VALIDACION 1: formato
+            if (!nombre.matches(REGEX_NOMBRE)) {
+                JOptionPane.showMessageDialog(this,
+                        "Nombre invalido.\nSolo letras, numeros y _ (2-20 caracteres).",
+                        "Nombre no valido", JOptionPane.WARNING_MESSAGE);
+                log("[VALIDACION] Nombre rechazado: '" + nombre + "' - formato invalido.");
+                return;
+            }
+
+            // VALIDACION 2: palabras reservadas
+            for (String reservada : PALABRAS_RESERVADAS) {
+                if (nombre.equalsIgnoreCase(reservada)) {
+                    JOptionPane.showMessageDialog(this,
+                            "El nombre '" + nombre + "' es una palabra reservada del sistema.",
+                            "Nombre no permitido", JOptionPane.WARNING_MESSAGE);
+                    log("[VALIDACION] Nombre rechazado: '" + nombre + "' - palabra reservada.");
+                    return;
+                }
+            }
+
+            miNombre = nombre;
+        }
+
+        // Nombre validado: deshabilitar boton y lanzar el backoff en hilo aparte
         btnConectar.setEnabled(false);
+        btnConectar.setBackground(new Color(160, 160, 160));
         new Thread(() -> conectarConBackoff(false)).start();
     }
 
-    // ── POLÍTICA: BACKOFF EXPONENCIAL ─────────────────────────
-    /**
-     * Intenta conectar MAX_REINTENTOS veces.
-     * La espera entre intentos se duplica con cada fallo (backoff exponencial).
-     * @param esReconexion true = caída detectada, false = intento inicial
-     */
+    // -- POLITICA: BACKOFF EXPONENCIAL ------------------------
+    // Este metodo solo maneja red. El nombre ya esta validado y guardado
+    // en miNombre antes de llegar aqui. No hay dialogos de Swing adentro.
     private void conectarConBackoff(boolean esReconexion) {
         reconectando = true;
 
         log("-----------------------------------------------------------------------------------------");
-        log("[POLÍTICA] " + (esReconexion
-                ? "Reconectando tras caída del servidor"
+        log("[POLITICA] " + (esReconexion
+                ? "Reconectando tras caida del servidor"
                 : "Intentando conectar al servidor"));
-        log("[POLÍTICA] Reintentos: " + MAX_REINTENTOS
+        log("[POLITICA] Reintentos: " + MAX_REINTENTOS
                 + " | Backoff desde: " + DELAY_BASE + "s"
-                + " | Timeout: " + (TIMEOUT_CONEXION/1000) + "s");
+                + " | Timeout: " + (TIMEOUT_CONEXION / 1000) + "s");
         log("-----------------------------------------------------------------------------------------");
 
         mostrarBarra(true);
@@ -231,61 +239,26 @@ public class PrincipalCli extends JFrame {
         int demoraSeg = DELAY_BASE;
 
         for (int intento = 1; intento <= MAX_REINTENTOS; intento++) {
-            final int i = intento;
+            final int i      = intento;
             final int demora = demoraSeg;
             SwingUtilities.invokeLater(() -> {
                 barraReintentos.setValue(i);
                 barraReintentos.setString("Intento " + i + "/" + MAX_REINTENTOS
-                        + " — espera previa: " + demora + "s");
+                        + " - espera previa: " + demora + "s");
             });
 
             log("[REINTENTO " + intento + "/" + MAX_REINTENTOS + "] "
                     + "Conectando a " + HOST + ":" + PORT
-                    + " (espera backoff: " + demoraSeg + "s)");
+                    + " (backoff: " + demoraSeg + "s)");
 
             try {
                 Socket s = new Socket();
                 s.connect(new InetSocketAddress(HOST, PORT), TIMEOUT_CONEXION);
                 s.setSoTimeout(0);
 
-                socket  = s;
-                out     = new PrintWriter(socket.getOutputStream(), true);
-                in      = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                dataOut = new DataOutputStream(socket.getOutputStream());
-
-                // Pedir nombre solo en la primera conexión
-                if (miNombre == null) {
-                    String nombre = JOptionPane.showInputDialog(this,
-                            "Ingresa tu nombre:", "Nombre", JOptionPane.QUESTION_MESSAGE);
-                    if (nombre == null || nombre.trim().isEmpty()) nombre = "cliente";
-                    miNombre = nombre.trim();
-
-                    // VALIDACION 1: caracteres permitidos
-                    if (!miNombre.matches(REGEX_NOMBRE)) {
-                        JOptionPane.showMessageDialog(this,
-                                "Nombre invalido.\nSolo letras, numeros y _ (2-20 caracteres).",
-                                "Nombre no valido", JOptionPane.WARNING_MESSAGE);
-                        log("[VALIDACION] Nombre rechazado: '" + miNombre + "' — caracteres no permitidos.");
-                        miNombre = null;
-                        cerrarSocket();
-                        finalizarReconexion();
-                        return;
-                    }
-
-                    // VALIDACION 2: palabras reservadas
-                    for (String reservada : PALABRAS_RESERVADAS) {
-                        if (miNombre.equalsIgnoreCase(reservada)) {
-                            JOptionPane.showMessageDialog(this,
-                                    "El nombre '" + miNombre + "' es una palabra reservada del sistema.",
-                                    "Nombre no permitido", JOptionPane.WARNING_MESSAGE);
-                            log("[VALIDACION] Nombre rechazado: '" + miNombre + "' — palabra reservada.");
-                            miNombre = null;
-                            cerrarSocket();
-                            finalizarReconexion();
-                            return;
-                        }
-                    }
-                }
+                socket = s;
+                out    = new PrintWriter(socket.getOutputStream(), true);
+                in     = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
                 out.println("NOMBRE:" + miNombre);
                 conectado    = true;
@@ -296,16 +269,16 @@ public class PrincipalCli extends JFrame {
                 habilitarControles(true);
                 setTitle("Cliente TCP - " + miNombre);
 
-                log("[OK] Conexión exitosa con " + HOST + ":" + PORT
+                log("[OK] Conexion exitosa con " + HOST + ":" + PORT
                         + " (logrado en intento " + intento + ")");
                 log("-------------------------------------------------------");
 
-                escuchar();
                 reenviarPendientes();
+                escuchar();
                 return;
 
             } catch (SocketTimeoutException ex) {
-                log("[TIMEOUT] El servidor no respondió en " + (TIMEOUT_CONEXION/1000) + "s");
+                log("[TIMEOUT] El servidor no respondio en " + (TIMEOUT_CONEXION / 1000) + "s");
             } catch (ConnectException ex) {
                 log("[ERROR] Servidor no disponible: " + ex.getMessage());
             } catch (IOException ex) {
@@ -313,14 +286,14 @@ public class PrincipalCli extends JFrame {
             }
 
             if (intento < MAX_REINTENTOS) {
-                log("[BACKOFF] Próximo intento en " + demoraSeg + "s...");
+                log("[BACKOFF] Proximo intento en " + demoraSeg + "s...");
                 try { Thread.sleep(demoraSeg * 1000L); }
                 catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
                 demoraSeg *= 2;
             }
         }
 
-        // ── Agotó todos los reintentos ────────────────────────
+        // -- Agoto todos los reintentos -----------------------
         finalizarReconexion();
 
         int totalEspera = DELAY_BASE * ((int) Math.pow(2, MAX_REINTENTOS) - 1);
@@ -328,20 +301,20 @@ public class PrincipalCli extends JFrame {
         log("[AGOTADO] " + MAX_REINTENTOS + " intentos fallidos. Total espera: ~" + totalEspera + "s");
         log("[INFO] Mensajes pendientes conservados: " + mensajesPendientes.size());
         if (esReconexion)
-            log("[INFO] El servidor no se reinició en el tiempo de espera.");
+            log("[INFO] El servidor no se reinicio en el tiempo de espera.");
         else
-            log("[INFO] Verifica que el servidor esté activo e intenta de nuevo.");
+            log("[INFO] Verifica que el servidor este activo e intenta de nuevo.");
         log("-----------------------------------------------------------------------------------------");
 
         SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this,
-                        "No se pudo conectar después de " + MAX_REINTENTOS + " intentos.\n"
+                        "No se pudo conectar despues de " + MAX_REINTENTOS + " intentos.\n"
                                 + "Mensajes pendientes conservados: " + mensajesPendientes.size(),
-                        "Conexión fallida", JOptionPane.ERROR_MESSAGE)
+                        "Conexion fallida", JOptionPane.ERROR_MESSAGE)
         );
     }
 
-    // ── HILO DE ESCUCHA ───────────────────────────────────────
+    // -- HILO DE ESCUCHA --------------------------------------
     private void escuchar() {
         new Thread(() -> {
             try {
@@ -354,35 +327,37 @@ public class PrincipalCli extends JFrame {
                     }
                     log(linea);
                 }
-                manejarCaida("El servidor cerró la conexión");
+                manejarCaida("El servidor cerro la conexion");
             } catch (SocketException ex) {
-                if (conectado) manejarCaida("Conexión perdida: " + ex.getMessage());
+                if (conectado) manejarCaida("Conexion perdida: " + ex.getMessage());
             } catch (IOException ex) {
                 if (conectado) manejarCaida("Error de red: " + ex.getMessage());
             }
         }).start();
     }
 
-    // ── MANEJAR CAIDA ─────────────────────────────────────────
+    // -- MANEJAR CAIDA ----------------------------------------
     private void manejarCaida(String motivo) {
         if (!conectado) return;
         conectado = false;
         cerrarSocket();
         habilitarControles(false);
-        actualizarEstado("Servidor caído", new Color(180, 0, 0));
+        actualizarEstado("Servidor caido", new Color(180, 0, 0));
 
         log("-----------------------------------------------------------------------------------------");
         log("[CAIDA] " + motivo);
-        log("[POLÍTICA] Iniciando backoff exponencial...");
+        log("[POLITICA] Iniciando backoff exponencial...");
 
+        // miNombre se conserva: la reconexion automatica no debe
+        // interrumpir al usuario con un dialogo de nombre.
         new Thread(() -> conectarConBackoff(true)).start();
     }
 
-    // ── ENVIAR MENSAJE ────────────────────────────────────────
+    // -- ENVIAR MENSAJE ---------------------------------------
     private void enviarMensaje() {
         String texto = mensaje.getText().trim();
         if (texto.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El mensaje no puede estar vacío.",
+            JOptionPane.showMessageDialog(this, "El mensaje no puede estar vacio.",
                     "Vacio", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -396,8 +371,8 @@ public class PrincipalCli extends JFrame {
         if (!conectado) {
             guardarPendiente(dest.isEmpty() ? "*" : dest, texto);
             JOptionPane.showMessageDialog(this,
-                    "Sin conexión. Mensaje guardado como pendiente.\n"
-                            + "Se enviará al reconectarse.",
+                    "Sin conexion. Mensaje guardado como pendiente.\n"
+                            + "Se enviara al reconectarse.",
                     "Mensaje encolado", JOptionPane.INFORMATION_MESSAGE);
             mensaje.setText("");
             return;
@@ -414,11 +389,11 @@ public class PrincipalCli extends JFrame {
         }
     }
 
-    // ── ENVIAR ARCHIVO ────────────────────────────────────────
+    // -- ENVIAR ARCHIVO ---------------------------------------
     private void enviarArchivo() {
         if (!conectado) {
             JOptionPane.showMessageDialog(this, "No estas conectado.",
-                    "Sin conexión", JOptionPane.WARNING_MESSAGE);
+                    "Sin conexion", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -431,7 +406,6 @@ public class PrincipalCli extends JFrame {
             return;
         }
 
-        // VALIDACION 3: extension bloqueada
         String nombreLower = archivo.getName().toLowerCase();
         for (String ext : EXT_BLOQUEADAS) {
             if (nombreLower.endsWith(ext)) {
@@ -443,7 +417,6 @@ public class PrincipalCli extends JFrame {
             }
         }
 
-        // VALIDACION 4: path traversal
         String nombreArchivo = archivo.getName();
         if (nombreArchivo.contains("..") || nombreArchivo.contains("/") || nombreArchivo.contains("\\")) {
             JOptionPane.showMessageDialog(this,
@@ -453,7 +426,6 @@ public class PrincipalCli extends JFrame {
             return;
         }
 
-        // VALIDACION 5: tamanio maximo
         if (archivo.length() > MAX_TAMANIO_ARCHIVO) {
             JOptionPane.showMessageDialog(this,
                     "El archivo supera el tamanio maximo de "
@@ -472,28 +444,44 @@ public class PrincipalCli extends JFrame {
 
         final String destFinal = dest;
         new Thread(() -> {
-            try (FileInputStream fis = new FileInputStream(archivo)) {
-                out.println("ARCHIVO:" + destFinal + ":" + archivo.getName() + ":" + archivo.length());
-                byte[] buf = new byte[4096];
-                int bytes;
-                while ((bytes = fis.read(buf)) != -1) dataOut.write(buf, 0, bytes);
-                dataOut.flush();
-                log("[ARCHIVO] Enviado: " + archivo.getName() + " -> " + destFinal);
+            try {
+                out.println("ARCHIVO:" + destFinal + ":" + nombreArchivo + ":" + archivo.length());
+
+                try (Socket socketArchivo = new Socket();
+                     FileInputStream fis = new FileInputStream(archivo)) {
+
+                    socketArchivo.connect(
+                            new InetSocketAddress(HOST, PORT_ARCHIVOS), TIMEOUT_CONEXION);
+
+                    DataOutputStream dos = new DataOutputStream(socketArchivo.getOutputStream());
+                    PrintWriter metaDos  = new PrintWriter(socketArchivo.getOutputStream(), true);
+                    metaDos.println(miNombre + "|" + destFinal + "|" + nombreArchivo + "|" + archivo.length());
+
+                    byte[] buf = new byte[4096];
+                    int bytes;
+                    while ((bytes = fis.read(buf)) != -1) {
+                        dos.write(buf, 0, bytes);
+                    }
+                    dos.flush();
+                }
+
+                log("[ARCHIVO] Enviado: " + nombreArchivo + " -> " + destFinal);
+
             } catch (IOException ex) {
                 log("[ERROR ARCHIVO] " + ex.getMessage());
-                manejarCaida("Error enviando archivo");
+                manejarCaida("Error enviando archivo: " + ex.getMessage());
             }
         }).start();
     }
 
-    // ── LISTAR USUARIOS ───────────────────────────────────────
+    // -- LISTAR USUARIOS --------------------------------------
     private void listarUsuarios() {
         if (!conectado || out == null) return;
         out.println("/users");
         log("[LISTA] Solicitando usuarios conectados...");
     }
 
-    // ── POLÍTICA: MENSAJES PENDIENTES ─────────────────────────
+    // -- POLITICA: MENSAJES PENDIENTES ------------------------
     private void guardarPendiente(String destino, String texto) {
         mensajesPendientes.add(new String[]{destino, texto});
         actualizarContadorPendientes();
@@ -510,7 +498,7 @@ public class PrincipalCli extends JFrame {
     }
 
     private void reenviarPendientes() {
-        if (miNombre != null) {
+        if (mensajesPendientes.isEmpty() && miNombre != null) {
             File f = new File(DIR_CLIENTE, "pendientes_" + miNombre + ".txt");
             if (f.exists()) {
                 try (BufferedReader br = new BufferedReader(new FileReader(f))) {
@@ -532,8 +520,11 @@ public class PrincipalCli extends JFrame {
         log("-----------------------------------------------------------------------------------------");
         log("[PENDIENTES] Reenviando " + mensajesPendientes.size() + " mensaje(s) pendiente(s)...");
 
-        while (!mensajesPendientes.isEmpty()) {
-            String[] item = mensajesPendientes.poll();
+        Queue<String[]> colaEnvio = new LinkedList<>(mensajesPendientes);
+        mensajesPendientes.clear();
+
+        while (!colaEnvio.isEmpty()) {
+            String[] item = colaEnvio.poll();
             String dest   = item[0];
             String texto  = item[1];
             try {
@@ -542,6 +533,7 @@ public class PrincipalCli extends JFrame {
                 log("[PENDIENTE] Reenviado a " + dest + ": " + texto);
             } catch (Exception ex) {
                 mensajesPendientes.add(item);
+                colaEnvio.forEach(mensajesPendientes::add);
                 log("[ERROR] No se pudo reenviar pendiente: " + ex.getMessage());
                 break;
             }
@@ -552,7 +544,7 @@ public class PrincipalCli extends JFrame {
         log("-----------------------------------------------------------------------------------------");
     }
 
-    // ── DESCONECTAR ───────────────────────────────────────────
+    // -- DESCONECTAR ------------------------------------------
     private void desconectar() {
         if (!conectado) return;
         conectado = false;
@@ -560,17 +552,21 @@ public class PrincipalCli extends JFrame {
         cerrarSocket();
         habilitarControles(false);
         actualizarEstado("Desconectado", Color.GRAY);
+
+        // Limpiar nombre: permite que la proxima vez que se pulse
+        // CONECTAR se solicite un nuevo nombre de usuario.
+        miNombre = null;
+
         SwingUtilities.invokeLater(() -> btnConectar.setEnabled(true));
         log("[INFO] Desconectado del servidor.");
     }
 
-    // ── UTILIDADES ────────────────────────────────────────────
+    // -- UTILIDADES -------------------------------------------
     private void cerrarSocket() {
         try { if (socket != null && !socket.isClosed()) socket.close(); }
         catch (IOException ignored) {}
     }
 
-    /** Restaura el estado de la UI al terminar una reconexión fallida o cancelada */
     private void finalizarReconexion() {
         reconectando = false;
         mostrarBarra(false);
