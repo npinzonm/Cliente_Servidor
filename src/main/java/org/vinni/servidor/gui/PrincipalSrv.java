@@ -23,8 +23,8 @@ public class PrincipalSrv extends JFrame {
     private static final int    PORT                = 12345;
     private static final int    PORT_ARCHIVOS       = 12346; // canal exclusivo para archivos
     private static final int    DELAY_REINICIO      = 5;
-    private static final int    INTERVALO_HEARTBEAT = 60;
-    private static final int    TIMEOUT_HEARTBEAT   = 50;
+    private static final int    INTERVALO_HEARTBEAT = 30;
+    private static final int    TIMEOUT_HEARTBEAT   = 10;
 
     // ── Validaciones ──────────────────────────────────────────
     private static final int      MAX_CLIENTES        = 10;
@@ -184,7 +184,7 @@ public class PrincipalSrv extends JFrame {
     }
 
     // ── INICIAR SERVIDOR ──────────────────────────────────────
-    private void iniciarServidor(boolean porWatchdog) {
+    void iniciarServidor(boolean porWatchdog) {
         new Thread(() -> {
             try {
                 serverSocket         = new ServerSocket(PORT);
@@ -206,12 +206,12 @@ public class PrincipalSrv extends JFrame {
                 new Thread(this::aceptarArchivos).start();
 
                 if (porWatchdog) {
-                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    logUI("---------------------------------------------------------------");
                     logUI("[WATCHDOG] Servidor reiniciado por watchdog externo.");
                     recuperarEstado();
-                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    logUI("---------------------------------------------------------------");
                 } else {
-                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    logUI("---------------------------------------------------------------");
                     logUI("[INICIO] Servidor TCP activo en puerto " + PORT);
                     logUI("[CONFIG] Watchdog         : WatchdogSrv externo");
                     logUI("[CONFIG] Heartbeat        : cada " + INTERVALO_HEARTBEAT + "s");
@@ -219,7 +219,7 @@ public class PrincipalSrv extends JFrame {
                     logUI("[CONFIG] Canal archivos   : :" + PORT_ARCHIVOS);
                     logUI("[INFO]   Logs             : " + DIR_LOGS);
                     logUI("[INFO]   Estado           : " + DIR_ESTADO);
-                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    logUI("---------------------------------------------------------------");
                     cargarColaPersistente();
                 }
 
@@ -256,13 +256,7 @@ public class PrincipalSrv extends JFrame {
     }
 
     // ── ACCEPTOR DE ARCHIVOS (canal binario separado) ─────────
-    /**
-     * [FIX] Acepta conexiones en PORT_ARCHIVOS.
-     * Cada conexión proviene de un cliente que quiere transferir un archivo.
-     * Protocolo:
-     *   Línea 1 (texto): remitente|destino|nombreArchivo|tamaño\n
-     *   Resto: bytes del archivo
-     */
+
     private void aceptarArchivos() {
         while (activo.get()) {
             try {
@@ -391,12 +385,12 @@ public class PrincipalSrv extends JFrame {
             btnApagar.setEnabled(false);
         });
 
-        logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        logUI("---------------------------------------------------------------");
         logUI("[APAGADO MANUAL] Servidor detenido por el administrador.");
         logUI("[ESCENARIO 2] Flag escrito → Watchdog NO reiniciará.");
         logUI("[ESTADO] Cola y log guardados en: " + DIR_ESTADO);
         logUI("[INFO] Los clientes ejecutarán política de reconexión.");
-        logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        logUI("---------------------------------------------------------------");
     }
 
     /** Crea el archivo centinela que le dice al Watchdog que fue intencional. */
@@ -748,6 +742,17 @@ public class PrincipalSrv extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new PrincipalSrv().setVisible(true));
+        // Si el Watchdog lanza el proceso con --autostart, el servidor
+        // llama a iniciarServidor() automaticamente sin esperar clic del usuario
+        boolean autostart = args.length > 0 && args[0].equals("--autostart");
+
+        SwingUtilities.invokeLater(() -> {
+            PrincipalSrv srv = new PrincipalSrv();
+            srv.setVisible(true);
+            if (autostart) {
+                srv.logUI("[WATCHDOG] Arranque automatico detectado — iniciando servidor...");
+                srv.iniciarServidor(true);
+            }
+        });
     }
 }

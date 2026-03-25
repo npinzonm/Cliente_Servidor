@@ -30,6 +30,8 @@ public class PrincipalCli extends JFrame {
     private static final String DIR_CLIENTE =
             System.getProperty("user.home") + File.separator + "ClienteTCP";
 
+    private static final String ARCHIVO_COLA = "cola_mensajes.txt";
+
     // -- Estado -----------------------------------------------
     private Socket           socket;
     private PrintWriter      out;
@@ -486,20 +488,18 @@ public class PrincipalCli extends JFrame {
         mensajesPendientes.add(new String[]{destino, texto});
         actualizarContadorPendientes();
 
-        if (miNombre != null) {
-            File f = new File(DIR_CLIENTE, "pendientes_" + miNombre + ".txt");
-            try (PrintWriter pw = new PrintWriter(new FileWriter(f, true))) {
-                pw.println(destino + "|" + texto);
-            } catch (IOException ignored) {}
-        }
+        File f = new File(DIR_CLIENTE, ARCHIVO_COLA);
+        try (PrintWriter pw = new PrintWriter(new FileWriter(f, true))) {
+            pw.println(destino + "|" + texto);
+        } catch (IOException ignored) {}
 
         log("[PENDIENTE] Guardado: '" + texto + "' -> " + destino
                 + " (total: " + mensajesPendientes.size() + ")");
     }
 
     private void reenviarPendientes() {
-        if (mensajesPendientes.isEmpty() && miNombre != null) {
-            File f = new File(DIR_CLIENTE, "pendientes_" + miNombre + ".txt");
+        if (mensajesPendientes.isEmpty()) {
+            File f = new File(DIR_CLIENTE, ARCHIVO_COLA);
             if (f.exists()) {
                 try (BufferedReader br = new BufferedReader(new FileReader(f))) {
                     String linea;

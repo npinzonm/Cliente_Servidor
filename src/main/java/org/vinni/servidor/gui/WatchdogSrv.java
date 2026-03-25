@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * WatchdogSrv — Proceso externo independiente que monitorea el servidor TCP.
  * Author: Vinni 2024 | Nathalie Pinzon 2026
  */
 public class WatchdogSrv extends JFrame {
@@ -29,10 +28,6 @@ public class WatchdogSrv extends JFrame {
 
     private static final String CLASE_SERVIDOR = "org.vinni.servidor.gui.PrincipalSrv";
 
-    /**
-     * [FIX] Ruta del flag que distingue apagado manual (Esc 2) de caída
-     * inesperada (Esc 3). Debe coincidir con PrincipalSrv.FLAG_APAGADO_MANUAL.
-     */
     private static final String FLAG_APAGADO_MANUAL =
             System.getProperty("user.home") + File.separator
                     + "ServidorTCP" + File.separator
@@ -267,17 +262,7 @@ public class WatchdogSrv extends JFrame {
     }
 
     // ── MANEJAR CAIDA ─────────────────────────────────────────
-    /**
-     * [FIX] Diferencia entre Escenario 2 y Escenario 3:
-     *
-     * Escenario 2 (apagado manual — botón APAGAR):
-     *   PrincipalSrv escribió apagado_manual.flag ANTES de cerrar.
-     *   → El Watchdog borra el flag y detiene el monitoreo SIN reiniciar.
-     *
-     * Escenario 3 (caída inesperada — botón X / kill / excepción):
-     *   PrincipalSrv NO escribió el flag.
-     *   → El Watchdog reinicia el servidor automáticamente.
-     */
+
     private void manejarCaida() {
         // ── ESCENARIO 2: ¿fue un apagado intencional? ─────────
         File flag = new File(FLAG_APAGADO_MANUAL);
@@ -330,12 +315,7 @@ public class WatchdogSrv extends JFrame {
     }
 
     // ── LANZAR PROCESO ────────────────────────────────────────
-    /**
-     * [FIX] Usa el classpath real del proceso actual para garantizar que
-     * el servidor hijo reciba exactamente el mismo entorno.
-     * Si falla (entorno IDE con classpath dinámico), loguea el error en
-     * lugar de fallar silenciosamente y habilita el botón manual.
-     */
+
     private void lanzarProceso() {
         try {
             String javaExe  = ProcessHandle.current()
@@ -352,11 +332,11 @@ public class WatchdogSrv extends JFrame {
                 return;
             }
 
-            ProcessBuilder pb = new ProcessBuilder(javaExe, "-cp", classpath, CLASE_SERVIDOR);
+            ProcessBuilder pb = new ProcessBuilder(javaExe, "-cp", classpath, CLASE_SERVIDOR, "--autostart");
             pb.redirectErrorStream(true);
             pb.start();
 
-            log("[WATCHDOG] Proceso lanzado: " + CLASE_SERVIDOR);
+            log("[WATCHDOG] Proceso lanzado con --autostart: " + CLASE_SERVIDOR);
             log("[WATCHDOG] Esperando que el servidor levante (~3s)...");
             actualizarEstadoWatchdog("Monitoreando", COLOR_WATCHDOG);
 
@@ -394,10 +374,7 @@ public class WatchdogSrv extends JFrame {
     }
 
     // ── DETENER MONITOREO ─────────────────────────────────────
-    /**
-     * [FIX] Idempotente: verifica isShutdown() antes de llamar shutdownNow()
-     * para evitar IllegalStateException si se llama varias veces.
-     */
+
     private void detenerMonitoreo() {
         monitoreando.set(false);
         if (scheduler != null && !scheduler.isShutdown())
