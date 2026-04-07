@@ -15,13 +15,50 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * Servidor TCP con políticas completas:
+ *
+ * REINICIO:
+ *   - Watchdog automático ante caída inesperada
+ *   - Apagado manual sin watchdog (escribe flag apagado_manual.flag)
+ *   - Recuperación de estado al reiniciar (log, cola, clientes)
+ *
+ * HEARTBEAT:
+ *   - Ping cada INTERVALO_HEARTBEAT segundos a cada cliente
+ *   - Si no responde en TIMEOUT_HEARTBEAT segundos → desconexión limpia
+ *
+ * LOGS PERSISTENTES:
+ *   - Cada evento se escribe en ~/ServidorTCP/logs/servidor_FECHA.txt
+ *   - Al reiniciar se carga el log del día actual
+ *
+ * COLA DE MENSAJES:
+ *   - Mensajes para clientes desconectados se guardan en cola
+ *   - Al reconectarse se entregan automáticamente
+ *   - Cola persistente en ~/ServidorTCP/estado/cola_mensajes.txt
+ *
+ * CORRECCIONES APLICADAS:
+ *   - [FIX] Protocolo de archivos separado: AcceptorArchivos escucha en
+ *     PORT_ARCHIVOS (12346) con su propio ServerSocket. Los bytes del
+ *     archivo nunca pasan por el BufferedReader del canal de texto, por
+ *     lo que no hay corrupción de datos.
+ *   - [FIX] Flag de apagado manual: al hacer clic en APAGAR (o cerrar con
+ *     el botón X estándar de "apagado limpio"), se crea el archivo
+ *     apagado_manual.flag en DIR_ESTADO. El WatchdogSrv lee ese flag y
+ *     decide si reiniciar o no, cumpliendo el Escenario 2.
+ *   - [FIX] Escenario 3: cerrar con X la ventana NO escribe el flag
+ *     (windowClosing dispara la caída inesperada), así el Watchdog SÍ
+ *     reinicia — Escenario 3 funciona correctamente.
+ *   - [FIX] MAX_CLIENTES validado antes de registrar al cliente.
+ *   - [FIX] generarNombre() es thread-safe (synchronized).
+ *
  * Author: Vinni 2024 | Nathalie Pinzón 2026
  */
 public class PrincipalSrv extends JFrame {
 
-    // ── Configuración ─────────────────────────────────────────
-    private static final int    PORT                = 12345;
-    private static final int    PORT_ARCHIVOS       = 12346; // canal exclusivo para archivos
+    // -- Configuracion -------------------------------------------
+    // Puerto configurable: el Watchdog puede lanzar multiples instancias
+    // en puertos distintos pasando --puerto XXXX como argumento a main().
+    private int PORT          = 12345;
+    private int PORT_ARCHIVOS = 12346;
     private static final int    DELAY_REINICIO      = 5;
     private static final int    INTERVALO_HEARTBEAT = 30;
     private static final int    TIMEOUT_HEARTBEAT   = 10;
@@ -206,12 +243,12 @@ public class PrincipalSrv extends JFrame {
                 new Thread(this::aceptarArchivos).start();
 
                 if (porWatchdog) {
-                    logUI("---------------------------------------------------------------");
+                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     logUI("[WATCHDOG] Servidor reiniciado por watchdog externo.");
                     recuperarEstado();
-                    logUI("---------------------------------------------------------------");
+                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 } else {
-                    logUI("---------------------------------------------------------------");
+                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     logUI("[INICIO] Servidor TCP activo en puerto " + PORT);
                     logUI("[CONFIG] Watchdog         : WatchdogSrv externo");
                     logUI("[CONFIG] Heartbeat        : cada " + INTERVALO_HEARTBEAT + "s");
@@ -219,7 +256,7 @@ public class PrincipalSrv extends JFrame {
                     logUI("[CONFIG] Canal archivos   : :" + PORT_ARCHIVOS);
                     logUI("[INFO]   Logs             : " + DIR_LOGS);
                     logUI("[INFO]   Estado           : " + DIR_ESTADO);
-                    logUI("---------------------------------------------------------------");
+                    logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     cargarColaPersistente();
                 }
 
@@ -256,7 +293,13 @@ public class PrincipalSrv extends JFrame {
     }
 
     // ── ACCEPTOR DE ARCHIVOS (canal binario separado) ─────────
-
+    /**
+     * [FIX] Acepta conexiones en PORT_ARCHIVOS.
+     * Cada conexión proviene de un cliente que quiere transferir un archivo.
+     * Protocolo:
+     *   Línea 1 (texto): remitente|destino|nombreArchivo|tamaño\n
+     *   Resto: bytes del archivo
+     */
     private void aceptarArchivos() {
         while (activo.get()) {
             try {
@@ -385,12 +428,12 @@ public class PrincipalSrv extends JFrame {
             btnApagar.setEnabled(false);
         });
 
-        logUI("---------------------------------------------------------------");
+        logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         logUI("[APAGADO MANUAL] Servidor detenido por el administrador.");
         logUI("[ESCENARIO 2] Flag escrito → Watchdog NO reiniciará.");
         logUI("[ESTADO] Cola y log guardados en: " + DIR_ESTADO);
         logUI("[INFO] Los clientes ejecutarán política de reconexión.");
-        logUI("---------------------------------------------------------------");
+        logUI("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
 
     /** Crea el archivo centinela que le dice al Watchdog que fue intencional. */
@@ -742,15 +785,34 @@ public class PrincipalSrv extends JFrame {
     }
 
     public static void main(String[] args) {
-        // Si el Watchdog lanza el proceso con --autostart, el servidor
-        // llama a iniciarServidor() automaticamente sin esperar clic del usuario
-        boolean autostart = args.length > 0 && args[0].equals("--autostart");
+        // Parsear argumentos:
+        //   --puerto XXXX  → puerto en el que este servidor escuchara
+        //   --autostart    → iniciar ServerSocket automaticamente (lanzado por Watchdog)
+        int     puertoCli  = 12345;
+        boolean autostart  = false;
+
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("--puerto") && i + 1 < args.length) {
+                try { puertoCli = Integer.parseInt(args[i + 1]); i++; }
+                catch (NumberFormatException ignored) {}
+            }
+            if (args[i].equals("--autostart")) {
+                autostart = true;
+            }
+        }
+
+        final int     puertoFinal    = puertoCli;
+        final boolean autostartFinal = autostart;
 
         SwingUtilities.invokeLater(() -> {
             PrincipalSrv srv = new PrincipalSrv();
+            // Aplicar puerto antes de iniciar
+            srv.PORT          = puertoFinal;
+            srv.PORT_ARCHIVOS = puertoFinal + 1000; // ej: 12345 → archivos en 13345
+            srv.setTitle("Servidor TCP  :" + puertoFinal);
             srv.setVisible(true);
-            if (autostart) {
-                srv.logUI("[WATCHDOG] Arranque automatico detectado — iniciando servidor...");
+            if (autostartFinal) {
+                srv.logUI("[WATCHDOG] Arranque automatico en puerto " + puertoFinal);
                 srv.iniciarServidor(true);
             }
         });
